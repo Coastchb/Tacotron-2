@@ -7,15 +7,15 @@ import shutil
 
 def extract_acoustic_feat(args):
     wav_resamp = os.path.join(args.data_root, "wav_re")
-    lf0_dir = os.path.join(args.data_root, "lfo")
+    lf0_dir = os.path.join(args.data_root, "lf0")
     mgc_dir = os.path.join(args.data_root, "mgc")
     bap_dir = os.path.join(args.data_root, "bap")
 
     # for 16kHz wav
-    nFFTHalf=1024
-    alpha=0.58
-    
-    mcsize=59
+    tar_fs = 16000
+    nFFTHalf = 1024
+    alpha = 0.58
+    mcsize = 59
 
     for dire in [lf0_dir, mgc_dir, bap_dir, wav_resamp]:
         if(os.path.exists(dire)):
@@ -27,7 +27,7 @@ def extract_acoustic_feat(args):
     for wav_file in wav_files:
         filename = wav_file.split(".")[0]
         # currently just downsample wav to 16kHz
-        os.system("sox %s/%s %s/%s" % (wav_dir, wav_file, wav_resamp, wav_file))
+        os.system("sox %s/%s -r %d %s/%s" % (wav_dir, wav_file, tar_fs, wav_resamp, wav_file))
         # extract f0,sp,ap
         os.system("%s/WORLD/analysis %s/%s %s/%s.f0 %s/%s.sp %s/%s.bapd" %
                   (args.binary_root, wav_resamp, wav_file, lf0_dir, filename,
