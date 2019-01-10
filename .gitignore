@@ -107,5 +107,7 @@ venv.bak/
 logs-*/
 training_data/
 
-data
+data/
+bin/SPTK
+bin/SPTK-3.9/
 
