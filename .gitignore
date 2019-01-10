@@ -108,6 +108,7 @@ logs-*/
 training_data/
 
 data/
+bin/
 bin/SPTK
 bin/SPTK-3.9/
 
