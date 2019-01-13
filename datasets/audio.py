@@ -4,7 +4,8 @@ import numpy as np
 import tensorflow as tf
 from scipy import signal
 from scipy.io import wavfile
-
+import pyworld
+import os
 
 def load_wav(path, sr):
 	return librosa.core.load(path, sr=sr)[0]
@@ -249,3 +250,60 @@ def normalize_tf(S, hparams):
 		return (2 * hparams.max_abs_value) * ((S - hparams.min_level_db) / (-hparams.min_level_db)) - hparams.max_abs_value
 	else:
 		return hparams.max_abs_value * ((S - hparams.min_level_db) / (-hparams.min_level_db))
+
+def get_config(sr):
+	if sr == 16000:
+		nFFTHalf = 1024
+		alpha = 0.58
+		bap_dim = 1
+
+	elif sr == 22050:
+		nFFTHalf = 1024
+		alpha = 0.65
+		bap_dim = 2
+
+	elif sr == 44100:
+		nFFTHalf = 2048
+		alpha = 0.76
+		bap_dim = 5
+
+	elif sr == 48000:
+		nFFTHalf = 2048
+		alpha = 0.77
+		bap_dim = 5
+	else:
+		raise("ERROR: currently upsupported sampling rate:%d".format(sr))
+	return nFFTHalf, alpha, bap_dim
+
+def synthesis(cmp_p,syn_dir, filename,hparams):
+	nFFTHalf,alpha,bap_dim = get_config(hparams.sample_rate)
+	mcsize = hparams.num_mgc - 1
+
+	mgc = cmp_p[:, 0:hparams.num_mgc]
+	lf0 = cmp_p[:, -2]
+	bap = cmp_p[:, -1]
+
+	mgc = mgc.astype("float32")
+	lf0 = lf0.astype("float32")
+	bap = bap.astype("float32")
+	#mgc.tofile("egs/demo/tmp_mgc/{}.mgc".format(name))
+	#lf0.tofile("egs/demo/tmp_lf0/{}.lf0".format(name))
+	# convert lf0 to f0
+	os.system("sopr -magic -1.0E+10 -EXP -MAGIC 0.0 %s/%s.lf0 | x2x +fa > %s/%s.resyn.f0a" %
+			  (syn_dir, filename, syn_dir, filename))
+	os.system("x2x +ad %s/%s.resyn.f0a > %s/%s.resyn.f0" %
+			  (syn_dir,filename, syn_dir, filename))
+	# convert　mgc to sp
+	os.system("mgc2sp -a %f -g 0 -m %d -l %d -o 2 %s/%s.mgc | sopr -d 32768.0 -P | "
+			  "x2x +fd > %s/%s.resyn.sp" % (alpha, mcsize, nFFTHalf,
+											syn_dir, filename, syn_dir, filename))
+	# convert bap to ap
+	os.system("x2x +fd %s/%s.bap > %s/%s.resyn.bapd" %
+			  (syn_dir, filename, syn_dir, filename))
+
+	syn_wav = os.path.join(syn_dir, 'wav')
+	os.makedirs(syn_wav, exist_ok=True)
+	# reconstruct wav
+	os.system("synth %d %d %s/%s.resyn.f0 %s/%s.resyn.sp %s/%s.resyn.bapd %s/%s.resyn.wav" %
+			  (nFFTHalf, hparams.sample_rate, syn_dir, filename, syn_dir, filename, syn_dir,
+			   filename, syn_wav, filename))

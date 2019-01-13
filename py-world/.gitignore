@@ -1,0 +1,11 @@
+# macOS
+.DS_Store
+
+# python
+*.py[c|o]
+__pycache__
+build
+
+# C
+*.so
+*.c

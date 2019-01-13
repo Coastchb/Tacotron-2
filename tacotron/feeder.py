@@ -25,13 +25,13 @@ class Feeder:
 		self._test_offset = 0
 
 		# Load metadata
-		self._mel_dir = os.path.join(os.path.dirname(metadata_filename), 'mels')
+		self._mel_dir = os.path.join(os.path.dirname(metadata_filename), 'cmp')
 		self._linear_dir = os.path.join(os.path.dirname(metadata_filename), 'linear')
 		with open(metadata_filename, encoding='utf-8') as f:
 			self._metadata = [line.strip().split('|') for line in f]
 			frame_shift_ms = hparams.hop_size / hparams.sample_rate
-			hours = sum([int(x[4]) for x in self._metadata]) * frame_shift_ms / (3600)
-			log('Loaded metadata for {} examples ({:.2f} hours)'.format(len(self._metadata), hours))
+			#hours = sum([int(x[4]) for x in self._metadata]) * frame_shift_ms / (3600)
+			log('Loaded metadata for {} examples'.format(len(self._metadata)))
 
 		#Train test split
 		if hparams.tacotron_test_size is None:
@@ -122,13 +122,13 @@ class Feeder:
 		meta = self._test_meta[self._test_offset]
 		self._test_offset += 1
 
-		text = meta[5]
+		text = meta[3]
 
 		input_data = np.asarray(text_to_sequence(text, self._cleaner_names), dtype=np.int32)
-		mel_target = np.load(os.path.join(self._mel_dir, meta[1]))
+		mel_target = np.load(os.path.join(self._mel_dir, meta[0]))
 		#Create parallel sequences containing zeros to represent a non finished sequence
 		token_target = np.asarray([0.] * (len(mel_target) - 1))
-		linear_target = np.load(os.path.join(self._linear_dir, meta[2]))
+		linear_target = np.load(os.path.join(self._linear_dir, meta[1]))
 		return (input_data, mel_target, token_target, linear_target, len(mel_target))
 
 	def make_test_batches(self):
@@ -186,13 +186,13 @@ class Feeder:
 		meta = self._train_meta[self._train_offset]
 		self._train_offset += 1
 
-		text = meta[5]
+		text = meta[3]
 
 		input_data = np.asarray(text_to_sequence(text, self._cleaner_names), dtype=np.int32)
-		mel_target = np.load(os.path.join(self._mel_dir, meta[1]))
+		mel_target = np.load(os.path.join(self._mel_dir, meta[0]))
 		#Create parallel sequences containing zeros to represent a non finished sequence
 		token_target = np.asarray([0.] * (len(mel_target) - 1))
-		linear_target = np.load(os.path.join(self._linear_dir, meta[2]))
+		linear_target = np.load(os.path.join(self._linear_dir, meta[1]))
 		return (input_data, mel_target, token_target, linear_target, len(mel_target))
 
 	def _prepare_batch(self, batches, outputs_per_step):
