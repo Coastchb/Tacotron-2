@@ -33,9 +33,9 @@ def build_from_path(hparams, input_dir, cmp_dir, linear_dir, n_jobs=12, tqdm=lam
 	mgc_dir = os.path.join(input_dir, "mgc")
 	bap_dir = os.path.join(input_dir, "bap")
 	for dire in [lf0_dir, mgc_dir, bap_dir]:
-		if (os.path.exists(dire)):
-			shutil.rmtree(dire)
-		os.makedirs(dire, exist_ok=False)
+		#if (os.path.exists(dire)):
+		#	shutil.rmtree(dire)
+		os.makedirs(dire, exist_ok=True)
 	with open(os.path.join(input_dir, 'metadata.csv'), encoding='utf-8') as f:
 		for line in f:
 			parts = line.strip().split('|')
@@ -148,10 +148,10 @@ def _process_utterance(lf0_dir, mgc_dir, bap_dir, cmp_dir, linear_dir, basename,
 			  (bap_dir, filename, bap_dir, filename))
 
 	# merge mgc,lf0 and bap to cmp
-	os.system("merge +d -s 0 -l 1 -L %d %s/%s.mgc < %s/%s.lf0 > %s/%s.ml" %
+	os.system("merge +f -s 0 -l 1 -L %d %s/%s.mgc < %s/%s.lf0 > %s/%s.ml" %
 			((mcsize+1), mgc_dir, filename, lf0_dir, filename, cmp_dir, filename))
-	os.system("merge +d -s 0 -l %d -L %d %s/%s.ml < %s/%s.bap > %s/%s.cmp" %
-			((mcsize+2), bap_dim, cmp_dir, filename, bap_dir, filename, cmp_dir, filename))
+	os.system("merge +f -s 0 -l %d -L %d %s/%s.ml < %s/%s.bap > %s/%s.cmp" %
+			(bap_dim, (mcsize+2), cmp_dir, filename, bap_dir, filename, cmp_dir, filename))
 
 	#if mel_frames > hparams.max_mel_frames and hparams.clip_mels_length:
 	#	return None
@@ -203,6 +203,5 @@ def _process_utterance(lf0_dir, mgc_dir, bap_dir, cmp_dir, linear_dir, basename,
 	#np.save(os.path.join(wav_dir, audio_filename), out.astype(out_dtype), allow_pickle=False)
 	np.save(os.path.join(cmp_dir, cmp_filename), cmp_mat, allow_pickle=False)
 	np.save(os.path.join(linear_dir, linear_filename), linear_spectrogram.T, allow_pickle=False)
-
 	# Return a tuple describing this training example
 	return (cmp_filename, linear_filename, cmp_frames, text)

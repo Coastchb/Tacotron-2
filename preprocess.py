@@ -12,8 +12,8 @@ def preprocess(args, input_folder, out_dir, hparams):
 	cmp_dir = os.path.join(out_dir, 'cmp')
 	linear_dir = os.path.join(out_dir, 'linear')
 	for d in [cmp_dir, linear_dir]:
-		if(os.path.exists(d)):
-			shutil.rmtree(d)
+		#if(os.path.exists(d)):
+		#	shutil.rmtree(d)
 		os.makedirs(d, exist_ok=True)
 
 	metadata = preprocessor.build_from_path(hparams, input_folder, cmp_dir, linear_dir, args.n_jobs, tqdm=tqdm)

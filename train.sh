@@ -6,29 +6,17 @@ if [ $# != 2 ];then
 fi
 
 stage=$1
-speaker=$2
+dataset=$2
 
-# extract acoustic feature (without dynamic features)
-if [ $stage -le 1 ];then
-  python local/extract_acoustic_feat.py --br bin/ --dr data/$speaker
-fi
-
-# copy synthesis to verify extracted acoustic features
-if [ $stage -le 2 ];then
-  python local/copy_syn.py --br bin/ --dr data/$speaker
-fi
+. path.sh
 
 # preprocess acoustic feature and text(lingual features)
-if [ $stage -le 3 ];then
-  python preprocess.py
+if [ $stage -le 0 ];then
+  python preprocess.py --dataset=$dataset
 fi
 
 # train model
-if [ $stage -le 4 ];then
-  python train.py
+if [ $stage -le 1 ];then
+  python train.py --base_dir=data/$dataset
 fi
 
-# synthesis
-if [ $stage -le 5 ];then
-
-fi

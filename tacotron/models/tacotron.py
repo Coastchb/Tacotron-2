@@ -340,6 +340,13 @@ class Tacotron():
 					self.tower_regularization_loss.append(regularization)
 					self.tower_linear_loss.append(linear_loss)
 
+					#with tf.Session(config=tf.ConfigProto(allow_soft_placement=True, log_device_placement=True)) as sess:
+					#	print('before:%.3f' % (sess.run(before)))
+					#	print('after:%.3f' % (sess.run(after)))
+					#	print('stop_token_loss:%.3f' % (sess.run(stop_token_loss)))
+					#	print('regularization:%.3f' % (sess.run(regularization)))
+					#	print('linear_loss:%.3f' % (sess.run(linear_loss)))
+					#	print('tower_loss:%.3f' % (sess.run(tower_loss)))
 					tower_loss = before + after + stop_token_loss + regularization + linear_loss
 					self.tower_loss.append(tower_loss)
 

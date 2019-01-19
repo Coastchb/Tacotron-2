@@ -1,1 +1,1 @@
-export PATH=$PATH:bin/WORLD:bin/SPTH
+export PATH=$PATH:bin/WORLD:bin/SPTK
