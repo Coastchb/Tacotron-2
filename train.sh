@@ -17,5 +17,5 @@ fi
 
 # train model
 if [ $stage -le 1 ];then
-  python train.py --base_dir=data/$dataset --eval_interval 3000 --checkpoint_interval 3000
+  python train.py --base_dir=data/$dataset --eval_interval 5000 --checkpoint_interval 500
 fi
