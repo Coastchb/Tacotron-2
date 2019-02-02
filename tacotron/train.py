@@ -311,7 +311,7 @@ def train(log_dir, args, hparams):
                                         max_len=t_len // hparams.outputs_per_step)
                     plot.plot_spectrogram(mel_p,
                                           os.path.join(eval_plot_dir, 'step-{}-eval-mel-spectrogram.png'.format(step)),
-                                          title='{}, {}, step={}, loss={:.5f}'.format(args.model, time_string(), step,
+                                          info='{}, {}, step={}, loss={:.5f}'.format(args.model, time_string(), step,
                                                                                       eval_loss),
                                           target_spectrogram=mel_t,
                                           max_len=t_len)
@@ -319,7 +319,7 @@ def train(log_dir, args, hparams):
                     if hparams.predict_linear:
                         plot.plot_spectrogram(lin_p, os.path.join(eval_plot_dir,
                                                                   'step-{}-eval-linear-spectrogram.png'.format(step)),
-                                              title='{}, {}, step={}, loss={:.5f}'.format(args.model, time_string(),
+                                              info='{}, {}, step={}, loss={:.5f}'.format(args.model, time_string(),
                                                                                           step, eval_loss),
                                               target_spectrogram=lin_t,
                                               max_len=t_len, auto_aspect=True)
@@ -358,7 +358,7 @@ def train(log_dir, args, hparams):
                         # Save real and predicted linear-spectrogram plot to disk (control purposes)
                         plot.plot_spectrogram(linear_prediction,
                                               os.path.join(plot_dir, 'step-{}-linear-spectrogram.png'.format(step)),
-                                              title='{}, {}, step={}, loss={:.5f}'.format(args.model, time_string(),
+                                              info='{}, {}, step={}, loss={:.5f}'.format(args.model, time_string(),
                                                                                           step, loss),
                                               target_spectrogram=linear_target,
                                               max_len=target_length, auto_aspect=True)
@@ -390,7 +390,7 @@ def train(log_dir, args, hparams):
                     # save real and predicted mel-spectrogram plot to disk (control purposes)
                     plot.plot_spectrogram(mel_prediction,
                                           os.path.join(plot_dir, 'step-{}-mel-spectrogram.png'.format(step)),
-                                          title='{}, {}, step={}, loss={:.5f}'.format(args.model, time_string(), step,
+                                          info='{}, {}, step={}, loss={:.5f}'.format(args.model, time_string(), step,
                                                                                       loss), target_spectrogram=target,
                                           max_len=target_length)
                     log('Input at step {}: {}'.format(step, sequence_to_text(input_seq)))
