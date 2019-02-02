@@ -6,6 +6,8 @@ import numpy as np
 from datasets import audio
 from wavenet_vocoder.util import is_mulaw, is_mulaw_quantize, mulaw, mulaw_quantize
 import shutil
+from nnmnkwii.preprocessing import interp1d
+import soundfile as sf
 
 def build_from_path(hparams, input_dir, cmp_dir, linear_dir, n_jobs=12, tqdm=lambda x: x):
 	"""
@@ -66,59 +68,15 @@ def _process_utterance(lf0_dir, mgc_dir, bap_dir, cmp_dir, linear_dir, basename,
 	Returns:
 		- A tuple: (audio_filename, mel_filename, linear_filename, time_steps, mel_frames, linear_frames, text)
 	"""
-	try:
-		# Load the audio as numpy array
-		wav = audio.load_wav(wav_path, sr=hparams.sample_rate)
-	except FileNotFoundError: #catch missing wav exception
-		print('file {} present in csv metadata is not present in wav folder. skipping!'.format(
-			wav_path))
-		return None
 
-	#Pre-emphasize
-	wav = audio.preemphasis(wav, hparams.preemphasis, hparams.preemphasize)
-
-	#rescale wav
-	if hparams.rescale:
-		wav = wav / np.abs(wav).max() * hparams.rescaling_max
-
-	#Assert all audio is in [-1, 1]
-	if (wav > 1.).any() or (wav < -1.).any():
-		raise RuntimeError('wav has invalid value: {}'.format(wav))
-
-	#M-AILABS extra silence specific
 	if hparams.trim_silence:
-		wav = audio.trim_silence(wav, hparams)
+		tar_wavfile = wav_path[:-4] + "_trim.wav"
+		print("raw wav path:%s" % wav_path)
+		wav_raw, fs = sf.read(wav_path)
+		wav_trim = audio.trim_silence(wav_raw, hparams)
+		sf.write(tar_wavfile, wav_trim, fs)
 
-	#Mu-law quantize
-	if is_mulaw_quantize(hparams.input_type):
-		#[0, quantize_channels)
-		out = mulaw_quantize(wav, hparams.quantize_channels)
-
-		#Trim silences
-		start, end = audio.start_and_end_indices(out, hparams.silence_threshold)
-		wav = wav[start: end]
-		out = out[start: end]
-
-		constant_values = mulaw_quantize(0, hparams.quantize_channels)
-		out_dtype = np.int16
-
-	elif is_mulaw(hparams.input_type):
-		#[-1, 1]
-		out = mulaw(wav, hparams.quantize_channels)
-		constant_values = mulaw(0., hparams.quantize_channels)
-		out_dtype = np.float32
-
-	else:
-		#[-1, 1]
-		out = wav
-		constant_values = 0.
-		out_dtype = np.float32
-
-	# Compute the mel scale spectrogram from the wav
-	#mel_spectrogram = audio.melspectrogram(wav, hparams).astype(np.float32)
-	#mel_frames = mel_spectrogram.shape[1]
-
-	# Compute the mgc,bap,lf0 features
+		wav_path = tar_wavfile
 
 	nFFTHalf, alpha, bap_dim = audio.get_config(hparams.sample_rate)
 
@@ -126,17 +84,22 @@ def _process_utterance(lf0_dir, mgc_dir, bap_dir, cmp_dir, linear_dir, basename,
 
 	filename = basename #os.path.basename(wav_path).split(".")[0]
 
+	print('extract feats for %s' % wav_path)
+
 	# extract f0,sp,ap
 	os.system("analysis %s %s/%s.f0 %s/%s.sp %s/%s.bapd" %
 				  (wav_path, lf0_dir, filename,
-				   mgc_dir, filename, bap_dir, filename))
+				   mgc_dir, filename, bap_dir, filename)) # get float64???
+
+    # interpolate f0
+	f0 = np.fromfile("%s/%s.f0" % (lf0_dir, filename),dtype=np.float64)
+	continuous_f0 = interp1d(f0, kind="slinear")
+	continuous_f0.tofile("%s/%s.f0c" % (lf0_dir, filename))
 
 	# convert f0 to lf0
-	os.system("x2x +da %s/%s.f0 > %s/%s.f0a" %
-			  (lf0_dir, filename, lf0_dir, filename))
-	os.system("x2x +af %s/%s.f0a | sopr -magic 0.0 -LN "
-			  "-MAGIC -1.0E+10 > %s/%s.lf0" %
-			  (lf0_dir, filename, lf0_dir, filename))
+	os.system("x2x +da %s/%s.f0c > %s/%s.f0a" % (lf0_dir, filename, lf0_dir, filename))
+	os.system("x2x +af %s/%s.f0a | sopr -magic 0.0 -LN -MAGIC -1.0E+10 > %s/%s.lf0" % (
+		lf0_dir, filename, lf0_dir, filename))
 
 	# convert　sp to mgc
 	os.system("x2x +df %s/%s.sp | sopr -R -m 32768.0 | "
@@ -157,25 +120,12 @@ def _process_utterance(lf0_dir, mgc_dir, bap_dir, cmp_dir, linear_dir, basename,
 	#	return None
 
 	#Compute the linear scale spectrogram from the wav
+	wav = audio.load_wav(wav_path, hparams.sample_rate)
 	linear_spectrogram = audio.linearspectrogram(wav, hparams).astype(np.float32)
 	linear_frames = linear_spectrogram.shape[1]
 
 	#sanity check
 	#assert linear_frames == mel_frames
-
-	if hparams.use_lws:
-		#Ensure time resolution adjustement between audio and mel-spectrogram
-		fft_size = hparams.n_fft if hparams.win_size is None else hparams.win_size
-		l, r = audio.pad_lr(wav, fft_size, audio.get_hop_size(hparams))
-
-		#Zero pad audio signal
-		out = np.pad(out, (l, r), mode='constant', constant_values=constant_values)
-	else:
-		#Ensure time resolution adjustement between audio and mel-spectrogram
-		l_pad, r_pad = audio.librosa_pad_lr(wav, hparams.n_fft, audio.get_hop_size(hparams), hparams.wavenet_pad_sides)
-
-		#Reflect pad audio signal on the right (Just like it's done in Librosa to avoid frame inconsistency)
-		out = np.pad(out, (l_pad, r_pad), mode='constant', constant_values=constant_values)
 
 	lf0 = np.fromfile("%s/%s.lf0" % (lf0_dir, filename), dtype=np.float32)
 	mgc = np.fromfile("%s/%s.mgc" % (mgc_dir, filename), dtype=np.float32)
@@ -184,7 +134,17 @@ def _process_utterance(lf0_dir, mgc_dir, bap_dir, cmp_dir, linear_dir, basename,
 
 	cmp_dim = mcsize + 1 + 1 + bap_dim
 	cmp_frames = cmp.shape[0] / cmp_dim
-	assert (mgc.shape[0]/(mcsize+1)) == (lf0.shape[0]/1) == (bap.shape[0]/bap_dim) == cmp_frames
+	#print(f0[:100])
+	#print(continuous_f0[:100])
+	print(lf0.shape)
+	print(continuous_f0.shape)
+	print(mgc.shape)
+	print(bap.shape)
+	print(cmp_frames)
+	print(continuous_f0.dtype)
+	print(mgc.dtype)
+	print(bap.dtype)
+	assert (mgc.shape[0]/(mcsize+1)) == (continuous_f0.shape[0]/1) == (bap.shape[0]/bap_dim) == cmp_frames
 	assert cmp_dim == hparams.num_mels
 	#assert len(out) >= cmp_frames * audio.get_hop_size(hparams)
 

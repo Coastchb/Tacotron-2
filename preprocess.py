@@ -6,7 +6,8 @@ import shutil
 from datasets import preprocessor
 from hparams import hparams
 from tqdm import tqdm
-
+import glob
+import numpy as np
 
 def preprocess(args, input_folder, out_dir, hparams):
 	cmp_dir = os.path.join(out_dir, 'cmp')
@@ -19,10 +20,22 @@ def preprocess(args, input_folder, out_dir, hparams):
 	metadata = preprocessor.build_from_path(hparams, input_folder, cmp_dir, linear_dir, args.n_jobs, tqdm=tqdm)
 	write_metadata(metadata, out_dir)
 
+def compute_mean_var(dire):
+	files = glob.glob(os.path.join(dire,"cmp/cmp-*.npy"))
+	cmps = []
+	for file in files:
+		cmps.extend(np.load(file))
+	mean = np.mean(cmps, axis=0)
+	std = np.std(cmps, axis=0)
+
+	np.save(os.path.join(dire,"cmp-mean.npy"), mean, allow_pickle=False)
+	np.save(os.path.join(dire,"cmp-var.npy"), std, allow_pickle=False)
+
 def write_metadata(metadata, out_dir):
 	with open(os.path.join(out_dir, 'train.txt'), 'w', encoding='utf-8') as f:
 		for m in metadata:
 			f.write('|'.join([str(x) for x in m]) + '\n')
+	compute_mean_var(out_dir)
 	cmp_frames = sum([int(m[2]) for m in metadata])
 	#timesteps = sum([int(m[3]) for m in metadata])
 	#sr = hparams.sample_rate

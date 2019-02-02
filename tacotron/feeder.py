@@ -190,6 +190,12 @@ class Feeder:
 
 		input_data = np.asarray(text_to_sequence(text, self._cleaner_names), dtype=np.int32)
 		mel_target = np.load(os.path.join(self._mel_dir, meta[0]))
+
+		base_dir = os.path.dirname(self._mel_dir)
+		feat_mean = np.load(os.path.join(base_dir,"cmp-mean.npy"))
+		feat_var = np.load(os.path.join(base_dir, "cmp-var.npy"))
+		mel_target = (mel_target - feat_mean) / feat_var
+
 		#Create parallel sequences containing zeros to represent a non finished sequence
 		token_target = np.asarray([0.] * (len(mel_target) - 1))
 		linear_target = np.load(os.path.join(self._linear_dir, meta[1]))
