@@ -319,7 +319,7 @@ def synthesis(cmp_p, syn_dir, filename, hparams):
     nFFTHalf, alpha, bap_dim = get_config(hparams.sample_rate)
     mcsize = hparams.num_mgc - 1
 
-    base_dir = "/home/potato/Tacotron-2/data/LJSpeech-1.1/training_data"
+    base_dir = os.path.join(os.path.dirname(os.path.dirname(syn_dir)),"training_data") #"/home/potato/Tacotron-2/data/LJSpeech-1.1/training_data"
     feat_mean = np.load(os.path.join(base_dir, "cmp-mean.npy"))
     feat_var = np.load(os.path.join(base_dir, "cmp-var.npy"))
     print("#### in synthesis###")
