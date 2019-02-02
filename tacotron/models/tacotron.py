@@ -138,7 +138,6 @@ class Tacotron():
                                     scope='decoder_prenet')
                     # Attention Mechanism
                     attention_mechanism = LocationSensitiveAttention(hp.attention_dim, encoder_outputs, hparams=hp,
-                                                                     is_training=is_training,
                                                                      mask_encoder=hp.mask_encoder,
                                                                      memory_sequence_length=tf.reshape(
                                                                          tower_input_lengths[i], [-1]),
@@ -165,7 +164,7 @@ class Tacotron():
 
                     # Define the helper for our decoder
                     if is_training or is_evaluating or gta:
-                        self.helper = TacoTrainingHelper(batch_size, tower_mel_targets[i], hp, gta, is_evaluating,
+                        self.helper = TacoTrainingHelper(batch_size, tower_mel_targets[i],tower_stop_token_targets[i], hp, gta, is_evaluating,
                                                          global_step)
                     else:
                         self.helper = TacoTestHelper(batch_size, hp)
