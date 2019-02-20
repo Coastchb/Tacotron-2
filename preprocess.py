@@ -8,6 +8,7 @@ from hparams import hparams
 from tqdm import tqdm
 import glob
 import numpy as np
+from datasets import utils
 
 def preprocess(args, input_folder, out_dir, hparams):
 	cmp_dir = os.path.join(out_dir, 'cmp')
@@ -21,10 +22,11 @@ def preprocess(args, input_folder, out_dir, hparams):
 	write_metadata(metadata, out_dir)
 
 def compute_mean_var(dire):
-	files = glob.glob(os.path.join(dire,"cmp/cmp-*.npy"))
+	files = glob.glob(os.path.join(dire,"cmp/*.cmp"))
 	cmps = []
 	for file in files:
-		cmps.extend(np.load(file))
+		feat = read_cep_pitch(file)
+		cmps.extend(feat)
 	mean = np.mean(cmps, axis=0)
 	std = np.std(cmps, axis=0)
 

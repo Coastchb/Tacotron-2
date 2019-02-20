@@ -1,1 +1,1 @@
-export PATH=$PATH:bin/WORLD:bin/SPTK
+export PATH=$PATH:bin/WORLD:bin/SPTK:bin/LPCNet
