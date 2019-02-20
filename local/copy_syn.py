@@ -32,56 +32,29 @@ def get_config(sr):
 	return nFFTHalf, alpha, bap_dim
 
 def reconstruct(args):
+		cep_dir = os.path.join(args.data_root, "training_data/cmp")
+		lpc_dir = os.path.join(args.data_root, "cosy_syn/lpc")
+		vocoder_input_dir = os.path.join(args.data_root, "cosy_syn/re_feat")
+		resyn_wav_dir = os.path.join(args.data_root, "cosy_syn/wav")
+		for d in [lpc_dir, resyn_wav_dir, vocoder_input_dir]:
+			if not os.path.exists(d):
+				os.makedirs(d)
 
-    lf0_dir = os.path.join(args.data_root, "lf0")
-    mgc_dir = os.path.join(args.data_root, "mgc")
-    bap_dir = os.path.join(args.data_root, "bap")
+		cep_files = os.listdir(cep_dir)
+		for cep_file in cep_files:
+			filename = cep_file.split(".")[0]
+			lpc_file = os.path.join(lpc_dir, "%s.lpc" % filename)
+			vocoder_input_feat = os.path.join(vocoder_input_dir, "%s.feat" % filename)
+			resyn_sw_file = os.path.join(resyn_wav_file, "%s.resyn.sw" % filename)
+			resyn_wav_file = os.path.join(resyn_wav_dir, "%s.resyn.wav" % filename)
+			os.system("lpc_from_cep %s %s" % (os.path.join(cep_dir, cep_file), lpc_file))
+			os.system("paste -d ' ' %s %s > %s" % (os.path.join(cep_dir, cep_file), lpc_file, vocoder_input_feat))
+			os.system("test_lpcnet_t %s %s" % (vocoder_input_feat, resyn_sw_file))
+			os.system("sox -t sw -r 16000 -c 1 %s -t wav %s" % (resyn_sw_file, resyn_wav_file))
 
-    syn_wav = os.path.join(args.data_root, "syn/wav")
-    syn_f0 = os.path.join(args.data_root, "syn/f0")
-    syn_sp = os.path.join(args.data_root, "syn/sp")
-    syn_ap = os.path.join(args.data_root, "syn/ap")
-
-    # for 16kHz wav
-    nFFTHalf, alpha, _ = get_config(args.sampling_rate)
-
-    mcsize = 59
-
-    for dire in [syn_wav, syn_f0, syn_sp, syn_ap]:
-        if (os.path.exists(dire)):
-            shutil.rmtree(dire)
-        os.makedirs(dire, exist_ok=False)
-
-    lf0_files = glob.glob(lf0_dir + "/*.lf0")
-    random.shuffle(lf0_files)
-    lf0_files = lf0_files[:10]
-
-    print("To construct %d wavs" % len(lf0_files))
-
-    for lf0_file in lf0_files:
-        filename = lf0_file.split("/")[-1].split(".")[0]
-
-        os.system("%s/SPTK/sopr -magic -1.0E+10 -EXP -MAGIC 0.0 %s/%s.lf0 | %s/SPTK/x2x +fa > %s/%s.resyn.f0a" %
-                  (args.binary_root, lf0_dir, filename, args.binary_root, syn_f0, filename))
-        os.system("%s/SPTK/x2x +ad %s/%s.resyn.f0a > %s/%s.resyn.f0" % (args.binary_root, syn_f0,
-                                                   filename, syn_f0, filename))
-        # convert　mgc to sp
-        os.system("%s/SPTK/mgc2sp -a %f -g 0 -m %d -l %d -o 2 %s/%s.mgc | %s/SPTK/sopr -d 32768.0 -P | "
-                  "%s/SPTK/x2x +fd > %s/%s.resyn.sp" % (args.binary_root, alpha, mcsize, nFFTHalf,
-                                                        mgc_dir, filename, args.binary_root,
-                                                        args.binary_root, syn_sp, filename))
-        # convert bap to ap
-        os.system("%s/SPTK/x2x +fd %s/%s.bap > %s/%s.resyn.bapd" % (args.binary_root, bap_dir,
-                                                              filename, syn_ap, filename))
-        # reconstruct wav
-        os.system("%s/WORLD/synth %d %d %s/%s.resyn.f0 %s/%s.resyn.sp %s/%s.resyn.bapd %s/%s.resyn.wav" %
-                  (args.binary_root, nFFTHalf, args.sampling_rate, syn_f0, filename, syn_sp, filename, syn_ap,
-                  filename, syn_wav, filename))
 
 def main():
     arp = ARP(description="extract audio acoustic feature")
-    arp.add_argument("--br", dest="binary_root", default="bin/",
-                     help="location of binaries")
     arp.add_argument("--dr", dest="data_root", default="data/tmp",
                      help="root directory of the data")
     arp.add_argument("--sr", dest="sampling_rate", default=22050)

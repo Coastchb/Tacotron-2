@@ -280,40 +280,6 @@ def synthesis(cmp_p, syn_dir, filename, hparams):
 
 	print("#### in synthesis###")
 	print(cmp_p.shape)
-	cmp_p = cmp_p * feat_var + feat_mean
-	print(cmp_p.shape)
-
-	mgc = cmp_p[:, 0:hparams.num_mgc]
-	lf0 = cmp_p[:, -3]
-	bap = cmp_p[:, -2:]
-
-	lf0 = lf0.astype(np.float32)
-	mgc = mgc.astype(np.float32)
-	bap = bap.astype(np.float32)
-
-	lf0.tofile("%s/%s.lf0" % (syn_dir, filename))
-	mgc.tofile("%s/%s.mgc" % (syn_dir, filename))
-	bap.tofile("%s/%s.bap" % (syn_dir, filename))
-
-	# convert lf0 back to f0
-	os.system("sopr -magic -1.0E+10 -EXP -MAGIC 0.0 %s/%s.lf0 | x2x +fa > %s/%s.resyn.f0a" %
-			  (syn_dir, filename, syn_dir, filename))
-	os.system("x2x +ad %s/%s.resyn.f0a > %s/%s.resyn.f0" % (syn_dir, filename, syn_dir, filename))
-
-	# convert　mgc to sp
-	os.system("mgc2sp -a %f -g 0 -m %d -l %d -o 2 %s/%s.mgc | sopr -d 32768.0 -P | "
-			  "x2x +fd > %s/%s.resyn.sp" % (alpha, mcsize, nFFTHalf,
-											syn_dir, filename, syn_dir, filename))
-	# convert bap to ap
-	os.system("x2x +fd %s/%s.bap > %s/%s.resyn.bapd" %
-			  (syn_dir, filename, syn_dir, filename))
-
-	syn_wav = os.path.join(syn_dir, 'wav')
-	os.makedirs(syn_wav, exist_ok=True)
-	# reconstruct wav
-	os.system("synth %d %d %s/%s.resyn.f0 %s/%s.resyn.sp %s/%s.resyn.bapd %s/%s.resyn.wav" %
-			  (nFFTHalf, hparams.sample_rate, syn_dir, filename, syn_dir, filename, syn_dir,
-			   filename, syn_wav, filename))
 
 	base_dir = "/home/potato/Tacotron-2/data/LJSpeech/training_data"
 	feat_mean = np.load(os.path.join(base_dir, "cmp-mean.npy"))
