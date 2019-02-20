@@ -21,23 +21,44 @@ def preprocess(args, input_folder, out_dir, hparams):
 	metadata = preprocessor.build_from_path(hparams, input_folder, cmp_dir, linear_dir, args.n_jobs, tqdm=tqdm)
 	write_metadata(metadata, out_dir)
 
-def compute_mean_var(dire):
-	files = glob.glob(os.path.join(dire,"cmp/*.cmp"))
-	cmps = []
-	for file in files:
-		feat = read_cep_pitch(file)
-		cmps.extend(feat)
-	mean = np.mean(cmps, axis=0)
-	std = np.std(cmps, axis=0)
+def compute_mean(dire):
+	files = glob.glob(os.path.join(dire, "cmp/*.cmp"))
 
-	np.save(os.path.join(dire,"cmp-mean.npy"), mean, allow_pickle=False)
-	np.save(os.path.join(dire,"cmp-var.npy"), std, allow_pickle=False)
+	mean_vector = numpy.zeros((1, hparams.num_mels))
+	all_frame_number = 0
+
+	for file in files:
+		features = read_cep_pitch(file)
+		mean_vector += numpy.reshape(numpy.sum(features[:, 0:hparams.num_mels], axis=0), (1, hparams.num_mels))
+		all_frame_number += features.shape[0]
+
+	mean_vector /= float(all_frame_number)
+	np.save(os.path.join(dire, "cmp-mean.npy"), mean_vector, allow_pickle=False)
+
+def compute_var(dire):
+	files = glob.glob(os.path.join(dire,"cmp/*.cmp"))
+
+	std_vector = numpy.zeros((1, hparams.num_mels))
+	all_frame_number = 0
+	mean = np.load(os.path.join(dire, "cmp-mean.npy"))
+
+	for file in files:
+		features = read_cep_pitch(file)
+		std_vector += numpy.reshape(numpy.sum((features[:, 0:hparams.num_mels] - mean) ** 2, axis=0),
+																(1, hparams.num_mels))
+		all_frame_number += features.shape[0]
+
+	std_vector /= float(all_frame_number)
+	std_vector = std_vector ** 0.5
+
+	np.save(os.path.join(dire,"cmp-var.npy"), std_vector, allow_pickle=False)
 
 def write_metadata(metadata, out_dir):
 	with open(os.path.join(out_dir, 'train.txt'), 'w', encoding='utf-8') as f:
 		for m in metadata:
 			f.write('|'.join([str(x) for x in m]) + '\n')
-	compute_mean_var(out_dir)
+	compute_mean(out_dir)
+	compute_var(out_dir)
 	cmp_frames = sum([int(m[2]) for m in metadata])
 	#timesteps = sum([int(m[3]) for m in metadata])
 	#sr = hparams.sample_rate

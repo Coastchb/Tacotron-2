@@ -60,7 +60,7 @@ hparams = tf.contrib.training.HParams(
 	#		.ipynb provided in the repo to listen to some inverted mel/linear spectrograms. That will first give you some idea about your above parameters, and
 	#		it will also give you an idea about trimming. If silences persist, try reducing trim_top_db slowly. If samples are trimmed mid words, try increasing it.
 	#	6- If audio quality is too metallic or fragmented (or if linear spectrogram plots are showing black silent regions on top), then restart from step 2.
-	num_mels = 63, #Number of mel-spectrogram channels and local conditioning dimensionality
+	num_mels = 39, #Number of mel-spectrogram channels and local conditioning dimensionality
 	num_mgc = 60,
 	num_freq = 1025, # (= n_fft / 2 + 1) only used when adding linear spectrograms post processing network
 	rescale = True, #Whether to rescale audio prior to preprocessing

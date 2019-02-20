@@ -274,13 +274,10 @@ def get_config(sr):
 		raise("ERROR: currently upsupported sampling rate:%d".format(sr))
 	return nFFTHalf, alpha, bap_dim
 
-def synthesis(cmp_p,syn_dir, filename,hparams):
+def synthesis(cmp_p, syn_dir, filename, hparams):
 	nFFTHalf,alpha,bap_dim = get_config(hparams.sample_rate)
 	mcsize = hparams.num_mgc - 1
 
-	base_dir = "/home/potato/Tacotron-2/data/LJSpeech-1.1/training_data"
-	feat_mean = np.load(os.path.join(base_dir, "cmp-mean.npy"))
-	feat_var = np.load(os.path.join(base_dir, "cmp-var.npy"))
 	print("#### in synthesis###")
 	print(cmp_p.shape)
 	cmp_p = cmp_p * feat_var + feat_mean
@@ -317,4 +314,25 @@ def synthesis(cmp_p,syn_dir, filename,hparams):
 	os.system("synth %d %d %s/%s.resyn.f0 %s/%s.resyn.sp %s/%s.resyn.bapd %s/%s.resyn.wav" %
 			  (nFFTHalf, hparams.sample_rate, syn_dir, filename, syn_dir, filename, syn_dir,
 			   filename, syn_wav, filename))
-	return load_wav(os.path.join(syn_wav, "%s.resyn.wav" % filename), hparams.sample_rate)
+
+	base_dir = "/home/potato/Tacotron-2/data/LJSpeech/training_data"
+	feat_mean = np.load(os.path.join(base_dir, "cmp-mean.npy"))
+	feat_var = np.load(os.path.join(base_dir, "cmp-var.npy"))
+	cmp_p = cmp_p * feat_var + feat_mean
+
+	cep_file = os.path.join(syn_dir, "%s.cep" % filename)
+	lpc_file = os.path.join(syn_dir, "%s.lpc" % filename)
+	vocoder_input_file = os.path.join(syn_dir, "%s.feat" % filename)
+	vocoder_output_file = os.path.join(syn_dir, "%s.out" % filename)
+	syn_wav_file = os.path.join(syn_dir, "%s.resyn.wav" % filename)
+
+	with open(cep_file,'w') as fd:
+		for i in cmp_p:
+			fd.writelines(' '.join(map(str,i)))
+
+	os.system("lpc_from_cep %s %s" % (cep_file, lpc_file))
+	os.system("paste -d ' ' %s %s > %s" % (cep_file, lpc_file, vocoder_input_file))
+	os.system("test_lpcnet_t %s %s" % (vocoder_input_file, vocoder_output_file))
+	os.system("sox -t sw -r 16000 -c 1 %s -t wav %s" % (vocoder_output_file, syn_wav_file))
+
+	return load_wav(syn_wav_file, hparams.sample_rate)
