@@ -6,6 +6,7 @@ import os
 import shutil
 import glob
 import random
+from datasets import utils
 
 def get_config(sr):
 	if sr == 16000:
@@ -32,23 +33,30 @@ def get_config(sr):
 	return nFFTHalf, alpha, bap_dim
 
 def reconstruct(args):
-		cep_dir = os.path.join(args.data_root, "training_data/cmp")
-		lpc_dir = os.path.join(args.data_root, "cosy_syn/lpc")
-		vocoder_input_dir = os.path.join(args.data_root, "cosy_syn/re_feat")
-		resyn_wav_dir = os.path.join(args.data_root, "cosy_syn/wav")
-		for d in [lpc_dir, resyn_wav_dir, vocoder_input_dir]:
+		cmp_dir = os.path.join(args.data_root, "training_data/cmp")
+		cep_dir = os.path.join(args.data_root, 'copy_syn/cep')
+		lpc_dir = os.path.join(args.data_root, "copy_syn/lpc")
+		vocoder_input_dir = os.path.join(args.data_root, "copy_syn/re_feat")
+		resyn_wav_dir = os.path.join(args.data_root, "copy_syn/wav")
+		for d in [lpc_dir, cep_dir, resyn_wav_dir, vocoder_input_dir]:
 			if not os.path.exists(d):
 				os.makedirs(d)
 
-		cep_files = os.listdir(cep_dir)
-		for cep_file in cep_files:
-			filename = cep_file.split(".")[0]
+		cmp_files = os.listdir(cmp_dir)[:10]
+		for cmp_file in cmp_files:
+
+			filename = cmp_file.split(".")[0]
+			cmp = utils.read_cep_pitch(os.path.join(cmp_dir,cmp_file))
+			cep_file = os.path.join(cep_dir, "%s.cep" % filename)
+			with open(cep_file, "w") as fd:
+				fd.writelines('\n'.join([' '.join(map(str,x)) for x in cmp]))
+
 			lpc_file = os.path.join(lpc_dir, "%s.lpc" % filename)
 			vocoder_input_feat = os.path.join(vocoder_input_dir, "%s.feat" % filename)
-			resyn_sw_file = os.path.join(resyn_wav_file, "%s.resyn.sw" % filename)
+			resyn_sw_file = os.path.join(resyn_wav_dir, "%s.resyn.sw" % filename)
 			resyn_wav_file = os.path.join(resyn_wav_dir, "%s.resyn.wav" % filename)
-			os.system("lpc_from_cep %s %s" % (os.path.join(cep_dir, cep_file), lpc_file))
-			os.system("paste -d ' ' %s %s > %s" % (os.path.join(cep_dir, cep_file), lpc_file, vocoder_input_feat))
+			os.system("lpc_from_cep %s %s" % (cep_file, lpc_file))
+			os.system("paste -d ' ' %s %s > %s" % (cep_file, lpc_file, vocoder_input_feat))
 			os.system("test_lpcnet_t %s %s" % (vocoder_input_feat, resyn_sw_file))
 			os.system("sox -t sw -r 16000 -c 1 %s -t wav %s" % (resyn_sw_file, resyn_wav_file))
 

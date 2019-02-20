@@ -8,6 +8,7 @@ from wavenet_vocoder.util import is_mulaw, is_mulaw_quantize, mulaw, mulaw_quant
 import shutil
 from nnmnkwii.preprocessing import interp1d
 import soundfile as sf
+from datasets import utils
 
 def build_from_path(hparams, input_dir, cmp_dir, linear_dir, n_jobs=12, tqdm=lambda x: x):
 	"""
@@ -32,18 +33,24 @@ def build_from_path(hparams, input_dir, cmp_dir, linear_dir, n_jobs=12, tqdm=lam
 	executor = ProcessPoolExecutor(max_workers=n_jobs)
 	futures = []
 
+	lpc_input_dir = os.path.join(input_dir, 'inputs')
+	if(not os.path.exists(lpc_input_dir)):
+		os.makedirs(lpc_input_dir)
+
 	with open(os.path.join(input_dir, 'metadata.csv'), encoding='utf-8') as f:
 		for line in f:
 			parts = line.strip().split('|')
 			basename = parts[0]
 			wav_path = os.path.join(input_dir, 'wavs', '{}.wav'.format(basename))
+			if(not os.path.exists(wav_path)):
+				continue;
 			text = parts[1]
-			futures.append(executor.submit(partial(_process_utterance, cmp_dir, linear_dir, basename, wav_path, text, hparams)))
+			futures.append(executor.submit(partial(_process_utterance, lpc_input_dir, cmp_dir, linear_dir, basename, wav_path, text, hparams)))
 
 	return [future.result() for future in tqdm(futures) if future.result() is not None]
 
 
-def _process_utterance(cmp_dir, linear_dir, basename, wav_path, text, hparams):
+def _process_utterance(input_dir, cmp_dir, linear_dir, basename, wav_path, text, hparams):
 	"""
 	Preprocesses a single utterance wav/text pair
 
@@ -62,7 +69,6 @@ def _process_utterance(cmp_dir, linear_dir, basename, wav_path, text, hparams):
 	Returns:
 		- A tuple: (audio_filename, mel_filename, linear_filename, time_steps, mel_frames, linear_frames, text)
 	"""
-	input_dir = os.path.join(os.path.dirname(os.path.dirname(wav_path)),"inputs")
 	filename = os.path.basename(wav_path).split(".")[0]
 
 	input_path = os.path.join(input_dir, filename)
@@ -71,7 +77,12 @@ def _process_utterance(cmp_dir, linear_dir, basename, wav_path, text, hparams):
 	os.system("sox %s -t sw -r 16000 -c 1 %s" % (wav_path, input_path))
 	os.system("dump_data_t -test %s %s" % (input_path, output_path))
 
+	cep = utils.read_cep_pitch(output_path)
+	cmp_frames = len(cep)
+
+	wav = audio.load_wav(wav_path, hparams.sample_rate)
+	linear_spectrogram = audio.linearspectrogram(wav, hparams).astype(np.float32)
 	linear_filename = 'linear-{}.npy'.format(basename)
 	np.save(os.path.join(linear_dir, linear_filename), linear_spectrogram.T, allow_pickle=False)
 	# Return a tuple describing this training example
-	return (output_path, linear_filename, cmp_frames, text)
+	return (os.path.basename(output_path), linear_filename, cmp_frames, text)

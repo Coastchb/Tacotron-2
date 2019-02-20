@@ -24,12 +24,12 @@ def preprocess(args, input_folder, out_dir, hparams):
 def compute_mean(dire):
 	files = glob.glob(os.path.join(dire, "cmp/*.cmp"))
 
-	mean_vector = numpy.zeros((1, hparams.num_mels))
+	mean_vector = np.zeros((1, hparams.num_mels))
 	all_frame_number = 0
 
 	for file in files:
-		features = read_cep_pitch(file)
-		mean_vector += numpy.reshape(numpy.sum(features[:, 0:hparams.num_mels], axis=0), (1, hparams.num_mels))
+		features = np.array(utils.read_cep_pitch(file))
+		mean_vector += np.reshape(np.sum(features[:, 0:hparams.num_mels], axis=0), (1, hparams.num_mels))
 		all_frame_number += features.shape[0]
 
 	mean_vector /= float(all_frame_number)
@@ -38,13 +38,13 @@ def compute_mean(dire):
 def compute_var(dire):
 	files = glob.glob(os.path.join(dire,"cmp/*.cmp"))
 
-	std_vector = numpy.zeros((1, hparams.num_mels))
+	std_vector = np.zeros((1, hparams.num_mels))
 	all_frame_number = 0
 	mean = np.load(os.path.join(dire, "cmp-mean.npy"))
 
 	for file in files:
-		features = read_cep_pitch(file)
-		std_vector += numpy.reshape(numpy.sum((features[:, 0:hparams.num_mels] - mean) ** 2, axis=0),
+		features = np.array(utils.read_cep_pitch(file))
+		std_vector += np.reshape(np.sum((features[:, 0:hparams.num_mels] - mean) ** 2, axis=0),
 																(1, hparams.num_mels))
 		all_frame_number += features.shape[0]
 

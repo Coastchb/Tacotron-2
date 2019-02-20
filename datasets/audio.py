@@ -281,7 +281,7 @@ def synthesis(cmp_p, syn_dir, filename, hparams):
 	print("#### in synthesis###")
 	print(cmp_p.shape)
 
-	base_dir = "/home/potato/Tacotron-2/data/LJSpeech/training_data"
+	base_dir = "/home/potato/Tacotron-2/data/tmp_lpc/training_data"
 	feat_mean = np.load(os.path.join(base_dir, "cmp-mean.npy"))
 	feat_var = np.load(os.path.join(base_dir, "cmp-var.npy"))
 	cmp_p = cmp_p * feat_var + feat_mean
